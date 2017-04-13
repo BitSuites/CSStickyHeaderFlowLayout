@@ -9,16 +9,8 @@
 #import "CSStickyHeaderFlowLayout.h"
 #import "CSStickyHeaderFlowLayoutAttributes.h"
 
-
 NSString *const CSStickyHeaderParallaxHeader = @"CSStickyHeaderParallexHeader";
 static const NSInteger kHeaderZIndex = 1024;
-
-@interface CSStickyHeaderFlowLayout (Debug)
-
-- (void)debugLayoutAttributes:(NSArray *)layoutAttributes;
-
-@end
-
 
 @implementation CSStickyHeaderFlowLayout
 
@@ -26,29 +18,23 @@ static const NSInteger kHeaderZIndex = 1024;
     [super prepareLayout];
 }
 
-- (UICollectionViewLayoutAttributes *)initialLayoutAttributesForAppearingSupplementaryElementOfKind:(NSString *)elementKind
-                                                                                        atIndexPath:(NSIndexPath *)elementIndexPath {
+- (UICollectionViewLayoutAttributes *)initialLayoutAttributesForAppearingSupplementaryElementOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)elementIndexPath {
     UICollectionViewLayoutAttributes *attributes = [super initialLayoutAttributesForAppearingSupplementaryElementOfKind:elementKind atIndexPath:elementIndexPath];
-
     if ([elementKind isEqualToString:CSStickyHeaderParallaxHeader]) {
         // sticky header do not need to offset
         return nil;
     } else {
         // offset others
-
         CGRect frame = attributes.frame;
         frame.origin.y += self.parallaxHeaderReferenceSize.height;
         attributes.frame = frame;
     }
-
     return attributes;
 }
 
 - (UICollectionViewLayoutAttributes *)finalLayoutAttributesForDisappearingSupplementaryElementOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)elementIndexPath {
-
     if ([elementKind isEqualToString:CSStickyHeaderParallaxHeader]) {
         CSStickyHeaderFlowLayoutAttributes *attribute = (CSStickyHeaderFlowLayoutAttributes *)[self layoutAttributesForSupplementaryViewOfKind:elementKind atIndexPath:elementIndexPath];
-
         [self updateParallaxHeaderAttribute:attribute];
         return attribute;
     } else {
@@ -57,8 +43,7 @@ static const NSInteger kHeaderZIndex = 1024;
     return nil;
 }
 
-- (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath
-{
+- (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath {
     UICollectionViewLayoutAttributes *attributes = [super layoutAttributesForSupplementaryViewOfKind:kind atIndexPath:indexPath];
     if (!attributes && [kind isEqualToString:CSStickyHeaderParallaxHeader]) {
         attributes = [CSStickyHeaderFlowLayoutAttributes layoutAttributesForSupplementaryViewOfKind:kind withIndexPath:indexPath];
@@ -66,9 +51,7 @@ static const NSInteger kHeaderZIndex = 1024;
     return attributes;
 }
 
-- (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect
-{
-    
+- (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect {
     if (self.collectionView.dataSource != nil) {
         // The rect should compensate the header size
         CGRect adjustedRect = rect;
@@ -131,14 +114,6 @@ static const NSInteger kHeaderZIndex = 1024;
             visibleParallexHeader = YES;
         }
         
-        
-        // This method may not be explicitly defined, default to 1
-        // https://developer.apple.com/library/ios/documentation/uikit/reference/UICollectionViewDataSource_protocol/Reference/Reference.html#jumpTo_6
-        //    NSUInteger numberOfSections = [self.collectionView.dataSource
-        //                                   respondsToSelector:@selector(numberOfSectionsInCollectionView:)]
-        //                                ? [self.collectionView.dataSource numberOfSectionsInCollectionView:self.collectionView]
-        //                                : 1;
-        
         // Create the attributes for the Parallex header
         if (visibleParallexHeader && ! CGSizeEqualToSize(CGSizeZero, self.parallaxHeaderReferenceSize)) {
             CSStickyHeaderFlowLayoutAttributes *currentAttribute = [CSStickyHeaderFlowLayoutAttributes layoutAttributesForSupplementaryViewOfKind:CSStickyHeaderParallaxHeader withIndexPath:[NSIndexPath indexPathWithIndex:0]];
@@ -168,9 +143,6 @@ static const NSInteger kHeaderZIndex = 1024;
             }];
         }
         
-        // For debugging purpose
-        //     [self debugLayoutAttributes:allItems];
-        
         return allItems;
     } else {
         return nil;
@@ -192,12 +164,14 @@ static const NSInteger kHeaderZIndex = 1024;
         return CGSizeZero;
     }
     CGSize size = [super collectionViewContentSize];
+    if (self.parallaxHeaderReferenceSize.width != size.width) {
+        [self setParallaxHeaderReferenceSize:CGSizeMake(size.width, self.parallaxHeaderReferenceSize.height)];
+    }
     size.height += self.parallaxHeaderReferenceSize.height;
     return size;
 }
 
-- (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
-{
+- (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds {
     return YES;
 }
 
@@ -215,27 +189,24 @@ static const NSInteger kHeaderZIndex = 1024;
 
 #pragma mark Helper
 
-- (void)updateHeaderAttributes:(UICollectionViewLayoutAttributes *)attributes lastCellAttributes:(UICollectionViewLayoutAttributes *)lastCellAttributes
-{
+- (void)updateHeaderAttributes:(UICollectionViewLayoutAttributes *)attributes lastCellAttributes:(UICollectionViewLayoutAttributes *)lastCellAttributes {
     CGRect currentBounds = self.collectionView.bounds;
     attributes.zIndex = kHeaderZIndex;
     attributes.hidden = NO;
-
+    
     CGPoint origin = attributes.frame.origin;
-
+    
     CGFloat sectionMaxY = CGRectGetMaxY(lastCellAttributes.frame) - attributes.frame.size.height;
     CGFloat y = CGRectGetMaxY(currentBounds) - currentBounds.size.height + self.collectionView.contentInset.top;
-
+    
     if (self.parallaxHeaderAlwaysOnTop) {
         y += self.parallaxHeaderMinimumReferenceSize.height;
     }
-
+    
     CGFloat maxY = MIN(MAX(y, attributes.frame.origin.y), sectionMaxY);
-
-//    NSLog(@"%.2f, %.2f, %.2f", y, maxY, sectionMaxY);
-
+    
     origin.y = maxY;
-
+    
     attributes.frame = (CGRect){
         origin,
         attributes.frame.size
@@ -243,27 +214,26 @@ static const NSInteger kHeaderZIndex = 1024;
 }
 
 - (void)updateParallaxHeaderAttribute:(CSStickyHeaderFlowLayoutAttributes *)currentAttribute {
-
     CGRect frame = currentAttribute.frame;
     frame.size.width = self.parallaxHeaderReferenceSize.width;
     frame.size.height = self.parallaxHeaderReferenceSize.height;
-
+    
     CGRect bounds = self.collectionView.bounds;
     CGFloat maxY = CGRectGetMaxY(frame);
-
+    
     // make sure the frame won't be negative values
     CGFloat y = MIN(maxY - self.parallaxHeaderMinimumReferenceSize.height, bounds.origin.y + self.collectionView.contentInset.top);
     CGFloat height = MAX(0, -y + maxY);
-
-
+    
+    
     CGFloat maxHeight = self.parallaxHeaderReferenceSize.height;
     CGFloat minHeight = self.parallaxHeaderMinimumReferenceSize.height;
     CGFloat progressiveness = (height - minHeight)/(maxHeight - minHeight);
     currentAttribute.progressiveness = progressiveness;
-
+    
     // if zIndex < 0 would prevents tap from recognized right under navigation bar
     currentAttribute.zIndex = 0;
-
+    
     // When parallaxHeaderAlwaysOnTop is enabled, we will check when we should update the y position
     if (self.parallaxHeaderAlwaysOnTop && height <= self.parallaxHeaderMinimumReferenceSize.height) {
         CGFloat insetTop = self.collectionView.contentInset.top;
@@ -271,66 +241,13 @@ static const NSInteger kHeaderZIndex = 1024;
         y = self.collectionView.contentOffset.y + insetTop;
         currentAttribute.zIndex = 2000;
     }
-
+    
     currentAttribute.frame = (CGRect){
         frame.origin.x,
         y,
         frame.size.width,
         self.disableStretching && height > maxHeight ? maxHeight : height,
     };
-    
-}
-
-@end
-
-#pragma mark - Debugging
-
-@implementation CSStickyHeaderFlowLayoutAttributes (Debug)
-
-- (NSString *)description {
-    NSString *indexPathString = [NSString stringWithFormat:@"{%ld, %ld}", (long)self.indexPath.section, (long)self.indexPath.item];
-
-    NSString *desc = [NSString stringWithFormat:@"<CSStickyHeaderFlowLayout: %p> indexPath: %@ zIndex: %ld valid: %@ kind: %@", self, indexPathString, (long)self.zIndex, [self isValid] ? @"YES" : @"NO", self.representedElementKind ?: @"cell"];
-
-    return desc;
-}
-
-- (BOOL)isValid {
-    switch (self.representedElementCategory) {
-        case UICollectionElementCategoryCell:
-            if (self.zIndex != 1) {
-                return NO;
-            }
-            return YES;
-        case UICollectionElementCategorySupplementaryView:
-            if ([self.representedElementKind isEqualToString:CSStickyHeaderParallaxHeader]) {
-                return YES;
-            } else if (self.zIndex < 1024) {
-                return NO;
-            }
-            return YES;
-        default:
-            return YES;
-    }
-}
-
-@end
-
-
-@implementation CSStickyHeaderFlowLayout (Debug)
-
-- (void)debugLayoutAttributes:(NSArray *)layoutAttributes {
-    __block BOOL hasInvalid = NO;
-    [layoutAttributes enumerateObjectsUsingBlock:^(CSStickyHeaderFlowLayoutAttributes *attr, NSUInteger idx, BOOL *stop) {
-        hasInvalid = ![attr isValid];
-        if (hasInvalid) {
-            *stop = YES;
-        }
-    }];
-
-    if (hasInvalid) {
-        NSLog(@"CSStickyHeaderFlowLayout: %@", layoutAttributes);
-    }
 }
 
 @end
